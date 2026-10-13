@@ -159,6 +159,8 @@ public:
   /// Create a new Anki card from a currently displayed article with the provided id.
   /// This function will call QWebEnginePage::runJavaScript() to fetch the corresponding HTML.
   void makeAnkiCardFromArticle( const QString & article_id );
+  /// Adds `word` to Anki if the loaded page has a dictionary article (Anki "auto send" option).
+  void autoSendToAnki( const QString & word );
 
   /// Opens the given link. Supposed to be used in response to
   /// openLinkInNewTab() signal. The link scheme is therefore supposed to be

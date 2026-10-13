@@ -1417,6 +1417,16 @@ download page.</string>
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QCheckBox" name="ankiAutoSend">
+            <property name="toolTip">
+             <string>Every word that has a dictionary article is added to the deck above, with the first dictionary's definition. Words already in the deck are skipped. The Word field must be the note type's first field.</string>
+            </property>
+            <property name="text">
+             <string>Automatically add successfully looked-up words</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>

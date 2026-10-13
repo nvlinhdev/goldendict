@@ -615,6 +615,11 @@ void ArticleView::loadFinished( bool result )
 
   // Skip dictionary-specific logic for website views
   if ( !isWebsiteView ) {
+    if ( cfg.preferences.ankiConnectServer.enabled && cfg.preferences.ankiConnectServer.autoSend
+         && url.scheme() == "gdlookup" ) {
+      autoSendToAnki( Utils::Url::queryItemValue( url, "word" ) );
+    }
+
     if ( cfg.preferences.autoScrollToTargetArticle ) {
       const QString scrollTo = Utils::Url::queryItemValue( url, "scrollto" );
       if ( isScrollTo( scrollTo ) ) {
@@ -1226,6 +1231,28 @@ void ArticleView::makeAnkiCardFromArticle( const QString & article_id )
   const auto js_code = QString( R"EOF(document.getElementById("gd-%1").innerText)EOF" ).arg( article_id );
   webview->page()->runJavaScript( js_code, [ this ]( const QVariant & article_text ) {
     sendToAnki( getWord(), article_text.toString(), translateLine->text() );
+  } );
+}
+
+void ArticleView::autoSendToAnki( const QString & word )
+{
+  if ( word.isEmpty() ) {
+    return;
+  }
+  // Text of the first non-empty article body. "Not found" pages have no article body, and
+  // website dictionaries (an iframe, or a notice when opened in a new tab) are skipped,
+  // so a word only counts when a real dictionary has it.
+  const auto js_code = QString( R"EOF(
+    [...document.querySelectorAll('section.gdarticlebody')]
+      .filter(e => !e.querySelector('iframe, .website-new-tab-notice'))
+      .map(e => e.innerText.trim())
+      .find(t => t) || ''
+  )EOF" );
+  webview->page()->runJavaScript( js_code, [ this, word ]( const QVariant & article_text ) {
+    const QString text = article_text.toString();
+    if ( !text.isEmpty() ) {
+      ankiConnector->sendToAnki( word, text.left( 500 ), QString(), QJsonObject(), true );
+    }
   } );
 }
 

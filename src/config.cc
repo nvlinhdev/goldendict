@@ -56,7 +56,8 @@ AnkiConnectServer::AnkiConnectServer():
   word( "word" ),
   text( "selected_text" ),
   sentence( "marked_sentence" ),
-  addAudio( true )
+  addAudio( true ),
+  autoSend( false )
 {
 }
 
@@ -937,6 +938,9 @@ Class load()
         c.preferences.ankiConnectServer.addAudio =
           ( ankiConnectServer.namedItem( "addAudio" ).toElement().text() == "1" );
       }
+
+      c.preferences.ankiConnectServer.autoSend =
+        ( ankiConnectServer.namedItem( "autoSend" ).toElement().text() == "1" );
     }
 
     if ( !preferences.namedItem( "checkForNewReleases" ).isNull() ) {
@@ -1972,6 +1976,10 @@ void save( const Class & c )
 
       opt = dd.createElement( "addAudio" );
       opt.appendChild( dd.createTextNode( c.preferences.ankiConnectServer.addAudio ? "1" : "0" ) );
+      proxy.appendChild( opt );
+
+      opt = dd.createElement( "autoSend" );
+      opt.appendChild( dd.createTextNode( c.preferences.ankiConnectServer.autoSend ? "1" : "0" ) );
       proxy.appendChild( opt );
     }
 

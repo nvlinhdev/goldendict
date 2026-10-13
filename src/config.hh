@@ -177,6 +177,8 @@ struct AnkiConnectServer
   QString sentence;
 
   bool addAudio = true;
+  // Automatically add every successfully looked-up word, skipping duplicates.
+  bool autoSend = false;
 
   AnkiConnectServer();
 };

@@ -30,10 +30,8 @@ AnkiConnector::AnkiConnector( QObject * parent, const Config::Class & _cfg ):
   connect( mgr, &QNetworkAccessManager::finished, this, &AnkiConnector::finishedSlot );
 }
 
-void AnkiConnector::sendToAnki( const QString & word,
-                                QString text,
-                                const QString & sentence,
-                                const QJsonObject & audio )
+void AnkiConnector::sendToAnki(
+  const QString & word, QString text, const QString & sentence, const QJsonObject & audio, bool autoSend )
 {
   if ( word.isEmpty() ) {
     emit this->errorText( tr( "Anki: can't create a card without a word" ) );
@@ -55,6 +53,12 @@ void AnkiConnector::sendToAnki( const QString & word,
     fields.insert( cfg.preferences.ankiConnectServer.sentence, sentence_changed );
   }
 
+  QJsonObject options;
+  options.insert( "allowDuplicate", !autoSend );
+  if ( autoSend ) {
+    options.insert( "duplicateScope", "deck" );
+  }
+
   QJsonArray audioArray;
   if ( !audio.isEmpty() && cfg.preferences.ankiConnectServer.addAudio ) {
     audioArray.append( audio );
@@ -69,9 +73,7 @@ void AnkiConnector::sendToAnki( const QString & word,
               "modelName": %2,
               "fields": %3,
               "audio": %4,
-              "options": {
-                  "allowDuplicate": true
-              },
+              "options": %5,
               "tags": []
           }
       }
@@ -80,10 +82,11 @@ void AnkiConnector::sendToAnki( const QString & word,
   QString postData = postTemplate.arg( Utils::json2String( cfg.preferences.ankiConnectServer.deck ),
                                        Utils::json2String( cfg.preferences.ankiConnectServer.model ),
                                        Utils::json2String( fields ),
-                                       Utils::json2String( audioArray ) );
+                                       Utils::json2String( audioArray ),
+                                       Utils::json2String( options ) );
 
   //  qDebug().noquote() << postData;
-  postToAnki( postData );
+  postToAnki( postData, autoSend );
 }
 
 void AnkiConnector::ankiSearch( const QString & word )
@@ -103,7 +106,7 @@ void AnkiConnector::ankiSearch( const QString & word )
   postToAnki( postTemplate.arg( word ) );
 }
 
-void AnkiConnector::postToAnki( const QString & postData )
+void AnkiConnector::postToAnki( const QString & postData, bool autoSend )
 {
   QUrl url;
   url.setScheme( "http" );
@@ -113,6 +116,7 @@ void AnkiConnector::postToAnki( const QString & postData )
   request.setTransferTimeout( transfer_timeout );
   //  request.setAttribute( QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy );
   request.setHeader( QNetworkRequest::ContentTypeHeader, "application/json" );
+  request.setAttribute( QNetworkRequest::User, autoSend );
   auto reply = mgr->post( request, postData.toUtf8() );
   connect( reply, &QNetworkReply::errorOccurred, this, [ this ]( QNetworkReply::NetworkError e ) {
     qWarning() << e;
@@ -131,6 +135,10 @@ void AnkiConnector::finishedSlot( QNetworkReply * reply )
     // unless Anki is not running.
     if ( obj.size() == 2 && obj.contains( "result" ) && obj.contains( "error" ) && obj[ "error" ].isNull() ) {
       emit errorText( tr( "Anki: post to Anki success" ) );
+    }
+    else if ( reply->request().attribute( QNetworkRequest::User ).toBool()
+              && obj[ "error" ].toString().contains( "duplicate" ) ) {
+      // Auto-sent word is already in the deck: expected, stay quiet.
     }
     else {
       emit errorText( tr( "Anki: post to Anki failed" ) );

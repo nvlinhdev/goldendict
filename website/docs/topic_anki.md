@@ -53,6 +53,14 @@ For example, the model could have `Front` and `Back` fields.
 
 ![screenshot](img/anki-result-sentence.png)
 
+### Automatically add looked-up words
+
+Enable **Automatically add successfully looked-up words** in the Anki tab to add every word that has a dictionary article to the configured deck, without clicking anything. The **Text** field gets the first dictionary's definition (up to 500 characters).
+
+- Lookups with no article ("not found", or only website dictionaries) are not added.
+- Words already in the deck are skipped. Duplicate detection uses the note type's first field, so the **Word** field must be the first field of the model.
+- The deck and model must already exist, and Anki must be running with AnkiConnect when you look words up.
+
 ## Using URI schemes
 
 The `goldendict://word` link can be used to query a word directly in GoldenDict-ng.

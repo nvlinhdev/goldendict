@@ -377,6 +377,7 @@ Preferences::Preferences( QWidget * parent, Config::Class & cfg_ ):
   ui.ankiWord->setText( p.ankiConnectServer.word );
   ui.ankiSentence->setText( p.ankiConnectServer.sentence );
   ui.ankiAddAudio->setChecked( p.ankiConnectServer.addAudio );
+  ui.ankiAutoSend->setChecked( p.ankiConnectServer.autoSend );
 
   connect( ui.customProxy, &QAbstractButton::toggled, this, &Preferences::customProxyToggled );
 
@@ -579,6 +580,7 @@ Config::Preferences Preferences::getPreferences()
   p.ankiConnectServer.word     = ui.ankiWord->text();
   p.ankiConnectServer.sentence = ui.ankiSentence->text();
   p.ankiConnectServer.addAudio = ui.ankiAddAudio->isChecked();
+  p.ankiConnectServer.autoSend = ui.ankiAutoSend->isChecked();
 
   p.checkForNewReleases           = ui.checkForNewReleases->isChecked();
   p.disallowContentFromOtherSites = ui.disallowContentFromOtherSites->isChecked();
