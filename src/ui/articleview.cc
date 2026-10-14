@@ -1251,7 +1251,7 @@ void ArticleView::autoSendToAnki( const QString & word )
   webview->page()->runJavaScript( js_code, [ this, word ]( const QVariant & article_text ) {
     const QString text = article_text.toString();
     if ( !text.isEmpty() ) {
-      ankiConnector->sendToAnki( word, text.left( 500 ), QString(), QJsonObject(), true );
+      ankiConnector->sendToAnki( word, text.left( 3000 ), QString(), QJsonObject(), true );
     }
   } );
 }

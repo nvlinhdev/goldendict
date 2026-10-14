@@ -55,7 +55,7 @@ For example, the model could have `Front` and `Back` fields.
 
 ### Automatically add looked-up words
 
-Enable **Automatically add successfully looked-up words** in the Anki tab to add every word that has a dictionary article to the configured deck, without clicking anything. The **Text** field gets the first dictionary's definition (up to 500 characters).
+Enable **Automatically add successfully looked-up words** in the Anki tab to add every word that has a dictionary article to the configured deck, without clicking anything. The **Text** field gets the first dictionary's definition (up to 3000 characters).
 
 - Lookups with no article ("not found", or only website dictionaries) are not added.
 - Words already in the deck are skipped. Duplicate detection uses the note type's first field, so the **Word** field must be the first field of the model.
