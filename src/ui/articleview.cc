@@ -1240,11 +1240,12 @@ void ArticleView::autoSendToAnki( const QString & word )
     return;
   }
   // Text of the first non-empty article body. "Not found" pages have no article body, and
-  // website dictionaries (an iframe, or a notice when opened in a new tab) are skipped,
+  // website dictionaries (an iframe, or a notice when opened in a new tab) and pronunciation
+  // ones (TTS and audio programs make an article for any word) are skipped,
   // so a word only counts when a real dictionary has it.
   const auto js_code = QString( R"EOF(
     [...document.querySelectorAll('section.gdarticlebody')]
-      .filter(e => !e.querySelector('iframe, .website-new-tab-notice'))
+      .filter(e => !e.querySelector('iframe, .website-new-tab-notice, .audio-play, .forvo_play'))
       .map(e => e.innerText.trim())
       .find(t => t) || ''
   )EOF" );
