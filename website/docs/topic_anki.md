@@ -59,7 +59,7 @@ Enable **Automatically add successfully looked-up words** in the Anki tab to add
 
 - Lookups with no article ("not found", or only website dictionaries) are not added.
 - Words already in the deck are skipped. Duplicate detection uses the note type's first field, so the **Word** field must be the first field of the model.
-- The deck and model must already exist, and Anki must be running with AnkiConnect when you look words up.
+- The deck and model must already exist. Words looked up while Anki isn't running are kept in `anki-queue.json` in the GoldenDict config folder and added once Anki with AnkiConnect is started, while GoldenDict is still running (it retries every minute).
 
 ## Using URI schemes
 

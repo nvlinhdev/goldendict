@@ -25,6 +25,10 @@ private:
   QNetworkAccessManager * mgr;
   const Config::Class & cfg;
   void postToAnki( const QString & postData, bool autoSend = false );
+  /// Resends the auto-sent notes that failed because Anki wasn't running
+  void flushQueue();
+  /// Retries every minute while there is a queue
+  void scheduleRetry();
   static constexpr auto transfer_timeout = 3000;
 
 public:

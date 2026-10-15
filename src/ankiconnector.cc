@@ -2,6 +2,35 @@
 #include "utils.hh"
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QFile>
+#include <QPointer>
+#include <QTimer>
+
+namespace {
+// Auto-sent notes that failed because Anki wasn't running. Shared by all the views
+// and kept in the config dir, so looked-up words aren't lost until Anki is started.
+QStringList queue;
+bool queueLoaded = false;
+QPointer< QTimer > retryTimer;
+constexpr auto retryInterval = 60 * 1000;
+const auto postDataAttribute = QNetworkRequest::Attribute( QNetworkRequest::User + 1 );
+
+QString queueFile()
+{
+  return Config::getConfigDir() + "anki-queue.json";
+}
+
+void saveQueue()
+{
+  QFile file( queueFile() );
+  if ( queue.isEmpty() ) {
+    file.remove();
+  }
+  else if ( file.open( QIODevice::WriteOnly ) ) {
+    file.write( QJsonDocument( QJsonArray::fromStringList( queue ) ).toJson() );
+  }
+}
+} // namespace
 
 QString markTargetWord( const QString & sentence, const QString & word )
 {
@@ -28,6 +57,39 @@ AnkiConnector::AnkiConnector( QObject * parent, const Config::Class & _cfg ):
 {
   mgr = new QNetworkAccessManager( this );
   connect( mgr, &QNetworkAccessManager::finished, this, &AnkiConnector::finishedSlot );
+
+  if ( !queueLoaded ) {
+    queueLoaded = true;
+    QFile file( queueFile() );
+    if ( file.open( QIODevice::ReadOnly ) ) {
+      for ( const auto & postData : QJsonDocument::fromJson( file.readAll() ).array() ) {
+        queue.append( postData.toString() );
+      }
+    }
+  }
+  scheduleRetry();
+}
+
+void AnkiConnector::flushQueue()
+{
+  // posted without removing: a reply from Anki removes it, a failure keeps it for the next retry
+  for ( const auto & postData : std::as_const( queue ) ) {
+    postToAnki( postData, true );
+  }
+  scheduleRetry();
+}
+
+void AnkiConnector::scheduleRetry()
+{
+  // one timer for all the views; it goes away with its view, the next view or failure makes a new one
+  if ( !queue.isEmpty() && !retryTimer ) {
+    retryTimer = new QTimer( this );
+    connect( retryTimer, &QTimer::timeout, this, &AnkiConnector::flushQueue );
+    retryTimer->start( retryInterval );
+  }
+  else if ( queue.isEmpty() && retryTimer ) {
+    retryTimer->deleteLater();
+  }
 }
 
 void AnkiConnector::sendToAnki(
@@ -117,16 +179,31 @@ void AnkiConnector::postToAnki( const QString & postData, bool autoSend )
   //  request.setAttribute( QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy );
   request.setHeader( QNetworkRequest::ContentTypeHeader, "application/json" );
   request.setAttribute( QNetworkRequest::User, autoSend );
+  if ( autoSend ) {
+    request.setAttribute( postDataAttribute, postData );
+  }
   auto reply = mgr->post( request, postData.toUtf8() );
-  connect( reply, &QNetworkReply::errorOccurred, this, [ this ]( QNetworkReply::NetworkError e ) {
+  connect( reply, &QNetworkReply::errorOccurred, this, [ this, autoSend ]( QNetworkReply::NetworkError e ) {
     qWarning() << e;
-    emit this->errorText( tr( "Anki: post to Anki failed" ) );
+    if ( !autoSend ) { // auto-sent notes are queued by finishedSlot
+      emit this->errorText( tr( "Anki: post to Anki failed" ) );
+    }
   } );
 }
 
 void AnkiConnector::finishedSlot( QNetworkReply * reply )
 {
+  const QString postData = reply->request().attribute( postDataAttribute ).toString();
   if ( reply->error() == QNetworkReply::NoError ) {
+    // Anki is running: forget the queued note, whatever the reply (added, duplicate, wrong deck),
+    // and send the queue after a new note
+    if ( queue.removeOne( postData ) ) {
+      saveQueue();
+    }
+    else if ( !queue.isEmpty() ) {
+      flushQueue();
+    }
+
     const QByteArray bytes   = reply->readAll();
     const QJsonDocument json = QJsonDocument::fromJson( bytes );
     const auto obj           = json.object();
@@ -145,6 +222,15 @@ void AnkiConnector::finishedSlot( QNetworkReply * reply )
     }
 
     qDebug().noquote() << "Anki response:" << Utils::json2String( obj );
+  }
+  else if ( !postData.isEmpty() ) {
+    qDebug() << "Anki connect error, queued" << reply->errorString();
+    if ( !queue.contains( postData ) ) {
+      queue.append( postData );
+      saveQueue();
+      scheduleRetry();
+      emit errorText( tr( "Anki is not running: the word will be added when it is" ) );
+    }
   }
   else {
     qDebug() << "Anki connect error" << reply->errorString();
